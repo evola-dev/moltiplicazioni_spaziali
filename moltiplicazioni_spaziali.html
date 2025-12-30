@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Moltiplicazioni Spaziali</title>
+
+<!-- Tailwind solo per layout rapido (ok in prototipo) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+/* =========================
+   BACKGROUND
+========================= */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+  background-image: url("assets/background/space.jpg"); /* <-- SFONDO CUSTOM */
+  background-size: cover;
+  background-position: center;
+}
+
+/* =========================
+   ANIMAZIONI
+========================= */
+@keyframes float {
+  0%,100% { transform: translate(-50%,0); }
+  50% { transform: translate(-50%,-15px); }
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
+}
+
+@keyframes explode {
+  0% { transform: scale(1); opacity:1; }
+  100% { transform: scale(2); opacity:0; }
+}
+
+/* =========================
+   PLANETS
+========================= */
+.planet {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.planet-skin {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  border-radius: 50%;
+}
+
+.answer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 8px black;
+  pointer-events: none;
+}
+
+.shake { animation: shake 0.4s; }
+.explode { animation: explode 0.6s forwards; }
+
+/* =========================
+   SPACESHIP & ROCKET
+========================= */
+#spaceship {
+  position: absolute;
+  bottom: 0;               /* NAVICELLA PIÙ IN BASSO */
+  left: 50%;
+  width: 90px;
+  animation: float 3s infinite ease-in-out;
+  z-index: 4;
+}
+
+#rocket {
+  position: absolute;
+  width: 14px;
+  height: 30px;
+  border-radius: 50%;
+  display: none;
+  z-index: 5;
+  transition: all 0.8s ease-in-out;
+}
+
+/* =========================
+   UI
+========================= */
+#hud {
+  position: absolute;
+  top: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 30px;
+  z-index: 10;
+  color: white;
+}
+
+#question {
+  font-size: 32px;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+<div id="app">
+
+  <!-- HUD -->
+  <div id="hud">
+    <div id="question"></div>
+    <div id="score">Punteggio: 0</div>
+  </div>
+
+  <!-- PLANETS -->
+  <div id="planet0" class="planet" style="left:10%; top:10%">
+    <div class="planet-skin"></div>
+    <div class="answer"></div>
+  </div>
+
+  <div id="planet1" class="planet" style="right:10%; top:10%">
+    <div class="planet-skin"></div>
+    <div class="answer"></div>
+  </div>
+
+  <div id="planet2" class="planet" style="left:50%; top:40%; transform:translateX(-50%)">
+    <div class="planet-skin"></div>
+    <div class="answer"></div>
+  </div>
+
+  <!-- SPACESHIP -->
+  <img id="spaceship" src="assets/spaceship/spaceship.svg" alt="spaceship">
+
+  <!-- ROCKET -->
+  <img id="rocket" src="assets/rocket/rocket.png" alt="rocket">
+</div>
+<script>
+/* =========================
+   ASSET CONFIG (CUSTOM)
+========================= */
+const assets = {
+  planets: [
+    "assets/planets/planet1.png",
+    "assets/planets/planet2.png",
+    "assets/planets/planet3.png"
+  ]
+};
+
+/* =========================
+   GAME STATE
+========================= */
+let score = 0;
+let currentQuestion = null;
+
+/* =========================
+   QUESTION GENERATION
+========================= */
+function generateQuestion() {
+  const a = Math.floor(Math.random() * 9) + 1;
+  const b = Math.floor(Math.random() * 9) + 1;
+  const correct = a * b;
+
+  const answers = [correct];
+  while (answers.length < 3) {
+    const n = Math.floor(Math.random() * 81) + 1;
+    if (!answers.includes(n)) answers.push(n);
+  }
+  answers.sort(() => Math.random() - 0.5);
+
+  return { text: `${a} × ${b}`, correct, answers };
+}
+
+/* =========================
+   RENDER QUESTION
+========================= */
+function loadQuestion() {
+  currentQuestion = generateQuestion();
+  document.getElementById("question").textContent = currentQuestion.text;
+
+  currentQuestion.answers.forEach((val, i) => {
+    const p = document.getElementById(`planet${i}`);
+    p.querySelector(".answer").textContent = val;
+    p.querySelector(".planet-skin").style.backgroundImage =
+      `url('${assets.planets[i]}')`;
+  });
+}
+
+/* =========================
+   ROCKET LOGIC
+========================= */
+function shoot(index) {
+  const rocket = document.getElementById("rocket");
+  const ship = document.getElementById("spaceship");
+  const planet = document.getElementById(`planet${index}`);
+
+  const s = ship.getBoundingClientRect();
+  const p = planet.getBoundingClientRect();
+
+  rocket.style.display = "block";
+  rocket.style.left = s.left + s.width/2 + "px";
+  rocket.style.top = s.top + "px";
+
+  setTimeout(() => {
+    rocket.style.left = p.left + p.width/2 + "px";
+    rocket.style.top = p.top + p.height/2 + "px";
+  }, 50);
+
+  setTimeout(() => {
+    rocket.style.display = "none";
+    evaluate(index);
+  }, 850);
+}
+
+/* =========================
+   ANSWER CHECK
+========================= */
+function evaluate(index) {
+  const planet = document.getElementById(`planet${index}`);
+  const value = currentQuestion.answers[index];
+
+  if (value === currentQuestion.correct) {
+    score += 10;
+    planet.classList.add("explode");
+    setTimeout(() => {
+      planet.classList.remove("explode");
+      loadQuestion();
+    }, 600);
+  } else {
+    planet.classList.add("shake");
+    setTimeout(() => planet.classList.remove("shake"), 400);
+  }
+
+  document.getElementById("score").textContent = `Punteggio: ${score}`;
+}
+
+/* =========================
+   INIT
+========================= */
+document.querySelectorAll(".planet").forEach((p, i) => {
+  p.addEventListener("click", () => shoot(i));
+});
+
+loadQuestion();
+</script>
+</body>
+</html>
